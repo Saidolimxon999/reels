@@ -96,8 +96,78 @@ function refreshAutoplay(){startAutoplay();installReelSwipe($('feed'));installRe
 document.addEventListener('touchstart',()=>{document.querySelectorAll('video').forEach(v=>{if(videoIsVisible(v)&&videoIsInActiveSection(v))tryPlayVisibleVideo(v)})},{passive:true});
 document.addEventListener('pointerdown',()=>{document.querySelectorAll('video').forEach(v=>{if(videoIsVisible(v)&&videoIsInActiveSection(v))tryPlayVisibleVideo(v)})},{passive:true});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(refreshAutoplay,100);else document.querySelectorAll('video').forEach(v=>v.pause())});document.addEventListener('scroll',()=>{document.querySelectorAll('video').forEach(v=>{if(videoIsVisible(v)&&videoIsInActiveSection(v))tryPlayVisibleVideo(v);else if(!v.paused)v.pause()})},{passive:true,capture:true});window.addEventListener('pageshow',()=>setTimeout(refreshAutoplay,200));window.addEventListener('resize',()=>setTimeout(refreshAutoplay,100));function drawHomeLatest(){renderTopics();drawReels('homeFeed');renderVideoCards('uploadPreview',reels)}
-async function askAI(){let prompt=$('aiPrompt').value.trim();if(!prompt){toast('AI yordamchiga savolingizni yozing');return}if(!GEMINI_API_KEY||GEMINI_API_KEY.includes('PASTE_YOUR_NEW_GEMINI_API_KEY_HERE')){ $('aiAnswer').textContent='AI ishlashi uchun index.html ichidagi GEMINI_API_KEY qatoriga yangi Gemini API kalitingizni kiriting.';return}let btn=$('aiAsk');btn.disabled=true;btn.textContent='AI javob tayyorlamoqda…';$('aiAnswer').textContent='';try{let context='HSN REELS uchun yordamchi. O‘zbek tilida javob ber. Hashtag yoki post matni so‘ralsa foydali taklif ber. Agar foydalanuvchi sayt xatosini tuzatishni so‘rasa, avval xatolik matni va tegishli kod parchasi kerakligini tushuntir; faqat berilgan kod asosida xavfsiz tuzatish taklif qil, API kalitlarini yoki maxfiy ma’lumotlarni chiqarishni so‘rama. Bu yordamchi brauzer ichidan saytdagi faylni o‘zi o‘zgartira olmaydi. Zararli yoki haqoratli kontentni qo‘llab-quvvatlama.';if(isOwner()&&me.repairEnabled)context+=' Sayt diagnostikasi rejimi yoqilgan: xatoni sabab, xavfsiz tuzatish va tekshiruv bosqichlari bilan tushuntir.';let res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(GEMINI_API_KEY),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:context+'\nFoydalanuvchi so‘rovi: '+prompt}]}],generationConfig:{temperature:0.6,maxOutputTokens:700}})});let data=await res.json();if(!res.ok)throw Error(data.error?.message||'Gemini API xatosi ('+res.status+')');let answer=(data.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('\n').trim();$('aiAnswer').textContent=answer||'AI javob qaytarmadi.';let tags=hashtagsFrom(answer);if(tags.length){let wrap=document.createElement('div');wrap.style.marginTop='8px';tags.forEach(t=>{let b=document.createElement('button');b.className='hashtag-pill';b.textContent=t;b.onclick=()=>{$('aiPrompt').value='Shu hashtag bo‘yicha video uchun tavsiya ber: '+t};wrap.appendChild(b)});$('aiAnswer').appendChild(wrap)}}catch(e){$('aiAnswer').textContent='AI ishlamadi: '+e.message+'\nGemini API yoqilganini va kalit cheklovlarini tekshiring.'}finally{btn.disabled=false;btn.textContent='AI’dan so‘rash'}}
-$('aiAsk').onclick=askAI;
+async function askAI(){
+  let prompt = $('aiPrompt').value.trim();
+
+  if(!prompt){
+    toast('AI yordamchiga savolingizni yozing');
+    return;
+  }
+
+  let btn = $('aiAsk');
+  btn.disabled = true;
+  btn.textContent = 'AI javob tayyorlamoqda…';
+  $('aiAnswer').textContent = '';
+
+  try {
+    let context = 'Sen HSN REELS saytining AI yordamchisisan. O‘zbek tilida aniq va foydali javob ber. Hashtag va post matni bo‘yicha yordam ber. Sayt xatolarini tushuntir va xavfsiz tuzatish yo‘llarini ko‘rsat.';
+
+    if(isOwner() && me.repairEnabled){
+      context += ' Sayt diagnostikasi yoqilgan. Xatoni sababi va tuzatish bosqichlarini tushuntir.';
+    }
+
+    let res = await fetch(
+      'https://hsn-reels-ai.saidolimxonhaydarov.workers.dev',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: context + '\nFoydalanuvchi so‘rovi: ' + prompt
+        })
+      }
+    );
+
+    let data = await res.json();
+
+    if(!res.ok){
+      throw Error(data.error || 'AI xatosi (' + res.status + ')');
+    }
+
+    let answer = data.answer || 'AI javob qaytarmadi.';
+    $('aiAnswer').textContent = answer;
+
+    let tags = hashtagsFrom(answer);
+
+    if(tags.length){
+      let wrap = document.createElement('div');
+      wrap.style.marginTop = '8px';
+
+      tags.forEach(t => {
+        let b = document.createElement('button');
+        b.className = 'hashtag-pill';
+        b.textContent = t;
+        b.onclick = () => {
+          $('aiPrompt').value = 'Shu hashtag bo‘yicha video uchun tavsiya ber: ' + t;
+        };
+        wrap.appendChild(b);
+      });
+
+      $('aiAnswer').appendChild(wrap);
+    }
+
+  } catch(e) {
+    $('aiAnswer').textContent =
+      'AI ishlamadi: ' + e.message +
+      '\nCloudflare Worker sozlamalarini tekshiring.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'AI’dan so‘rash';
+  }
+}
+
+$('aiAsk').onclick = askAI;
 
 try{const app=initializeApp(firebaseConfig);auth=getAuth(app);fs=getFirestore(app);st=getStorage(app);assets={upload:async(f,o)=>{let r=ref(st,'uploads/'+me.id+'/'+Date.now()+'_'+f.name.replace(/[^\w.-]/g,'_'));await uploadBytes(r,f,{contentType:o?.type||f.type});return{url:await getDownloadURL(r)}}};$('gl').onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>{$('lerr').textContent='Kirishda xato: '+(e.code||e.message)});$('fb').onclick=()=>signInWithPopup(auth,new FacebookAuthProvider()).catch(e=>{$('lerr').textContent='Facebook sozlamasi yoqilmagan yoki xato: '+(e.code||e.message)});onAuthStateChanged(auth,async u=>{if(!u){if(presenceTimer)clearInterval(presenceTimer);return}me={id:u.uid,name:u.displayName||'Foydalanuvchi',email:u.email||'',contacts:[]};$('uploadVideo').disabled=false;$('uploadVideo').textContent='Videoni joylash';$('login').style.display='none';$('welcome').style.display='none';localStorage.setItem('hsn_seen','1');try{let d=await getDoc(doc(fs,'users',u.uid));if(d.exists()){const data=d.data();me.name=data.name||me.name;me.bio=data.bio||'';me.contacts=Array.isArray(data.contacts)?data.contacts:[];me.verified=!!data.verified;me.premium=!!data.premium;me.repairEnabled=!!data.repairEnabled;await setDoc(doc(fs,'users',u.uid),{online:true,lastSeen:Date.now()},{merge:true})}else await setDoc(doc(fs,'users',u.uid),{name:me.name,bio:'',contacts:[],online:true,lastSeen:Date.now(),t:Date.now()},{merge:true})}catch(e){}$('who').textContent=me.name;profile();if(presenceTimer)clearInterval(presenceTimer);presenceTimer=setInterval(()=>setPresence(true),25000);window.addEventListener('pagehide',()=>setPresence(false));document.addEventListener('visibilitychange',()=>setPresence(document.visibilityState==='visible'));onSnapshot(query(collection(fs,'reels'),orderBy('t','desc'),limit(60)),s=>{reels=s.docs.map(d=>({id:d.id,...d.data()}));drawReels();drawHomeLatest();if($('s-reels').classList.contains('on'))startAutoplay()},e=>toast('Reels yuklanmadi: Firebase qoidalarini tekshiring'));onSnapshot(collection(fs,'users'),s=>{users=s.docs.map(d=>({id:d.id,...d.data()}));const self=users.find(x=>x.id===me.id);if(self){me.contacts=Array.isArray(self.contacts)?self.contacts:me.contacts;me.verified=!!self.verified;me.premium=!!self.premium;me.repairEnabled=!!self.repairEnabled}if(!target)drawPeople($('userSearch')?.value||'');else{let cu=users.find(x=>x.id===target);if(cu){$('chatTitle').innerHTML=esc(cu.name||'Suhbat')+verifiedMark(cu)+premiumMark(cu);$('chatSub').textContent=(onlineNow(cu)?'🟢 Onlayn':'Oflayn')+' · Shaxsiy xabar'}}profile()},()=>{});drawReels();loadChat();drawHomeLatest()})}catch(e){console.error(e);$('lerr').textContent='Firebase ulanishida xato: sozlamalarni tekshiring'}
 </script></body></html>
