@@ -29,7 +29,7 @@ const YOUTUBE_API_KEY = "PASTE_YOUR_NEW_YOUTUBE_API_KEY_HERE";
 // AI yordamchi uchun alohida Gemini API kaliti. O‘zingiz yangi kalitni shu joyga kiriting.
 const GEMINI_API_KEY = "PASTE_YOUR_NEW_GEMINI_API_KEY_HERE";
 // O‘zingizning Firebase/Google login emailingizni kiriting. Placeholder qolsa, egaga xos boshqaruv yashirin turadi.
-const OWNER_EMAIL = "PUT_YOUR_LOGIN_EMAIL_HERE";
+const OWNER_EMAIL = "saidolimxonhaydarov@gmail.com";
 const $=id=>document.getElementById(id);const esc=s=>{let d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML};let auth,fs,st,me={id:'guest',name:'Mehmon',email:'',contacts:[]},reels=[],users=[],target=null,topic='all',chatUnsub=null,timer,assets=null,peopleFilter='all',presenceTimer=null;let ytResults=[],ytTopic=null,ytRequest=0,tagFilter=null,autoPlayObserver=null;
 const isOwner=()=>!!me.email&&OWNER_EMAIL!=='PUT_YOUR_LOGIN_EMAIL_HERE'&&me.email.toLowerCase()===OWNER_EMAIL.toLowerCase();
 const verifiedMark=u=>u&&u.verified?'<span class="verified-badge" title="Tasdiqlangan hisob">✓</span>':'';
